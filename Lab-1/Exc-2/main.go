@@ -14,13 +14,15 @@ import (
 
 type task struct {
 	gr     thr.GoRoutine
-	status string
+	status status
 }
 
+type status string
+
 const (
-	running = "running"
-	stopped = "stopped"
-	offline = "offline"
+	running = status("running")
+	stopped = status("stopped")
+	offline = status("offline")
 )
 
 func InitConsole(h uint, tasks []task, selected int) {
@@ -36,12 +38,10 @@ func InitConsole(h uint, tasks []task, selected int) {
 		SprintTasks(tasks, selected),
 		taskH,
 		""+
-			"%v←↓↑→%v  move selection\n"+
-			"%vspace%v toggle task\n"+
-			"%vq%v     quit\n"+
-			"%ve%v     start application%v\n",
-		ansi.Fg.Code(166),
-		ansi.Fg.Code(244),
+			" %v←↓↑→%v move selection\n"+
+			"%vspace%v toggle task state\n"+
+			"    %vq%v quit\n"+
+			"%v\n",
 		ansi.Fg.Code(166),
 		ansi.Fg.Code(244),
 		ansi.Fg.Code(166),
@@ -164,21 +164,6 @@ func main() {
 		fmt.Println(ansi.Fg.Code(207))
 		fmt.Println("-*. Goodbye .*-" + ansi.Fmt.Reset)
 	}()
-
-waitForStart:
-	for {
-		switch Getch() {
-		case getch.Key_e, getch.KeyE:
-			for i := range tasks {
-				tasks[i].gr.Signal(thr.Resume)
-				tasks[i].status = running
-				time.Sleep(80 * time.Millisecond)
-			}
-			break waitForStart
-		case getch.Key_q, getch.KeyQ:
-			return
-		}
-	}
 
 mainLoop:
 	for {
