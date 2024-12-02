@@ -8,3 +8,9 @@ Programy uruchomić można poleceniem:
 $ go run .
 ```
 znajdując się w katalogu danego programu.
+
+Przed uruchomieniem programów niezbędne może być wywołanie:
+```powershell
+$ go mod tidy
+```
+aby kompilator pobrał zewnętrzne biblioteki.
