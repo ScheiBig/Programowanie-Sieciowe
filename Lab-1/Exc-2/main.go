@@ -152,6 +152,19 @@ func main() {
 
 	updateFooter := func() { PrintfWithStatus(SprintTasks(tasks, sel), 3, "") }
 
+	defer func() {
+		for i := range tasks {
+			tasks[i].gr.Signal(thr.Stop)
+			tasks[i].gr.Join()
+			tasks[i].status = offline
+			updateFooter()
+			time.Sleep(10 * time.Millisecond)
+		}
+		fmt.Print(ansi.Clr.Screen.ToEnd)
+		fmt.Println(ansi.Fg.Code(207))
+		fmt.Println("-*. Goodbye .*-" + ansi.Fmt.Reset)
+	}()
+
 waitForStart:
 	for {
 		switch Getch() {
@@ -163,7 +176,7 @@ waitForStart:
 			}
 			break waitForStart
 		case getch.Key_q, getch.KeyQ:
-			goto ending
+			return
 		}
 	}
 
@@ -200,16 +213,4 @@ mainLoop:
 			updateFooter()
 		}
 	}
-
-ending:
-	for i := range tasks {
-		tasks[i].gr.Signal(thr.Stop)
-		tasks[i].gr.Join()
-		tasks[i].status = offline
-		updateFooter()
-		time.Sleep(10 * time.Millisecond)
-	}
-	fmt.Print(ansi.Clr.Screen.ToEnd)
-	fmt.Println(ansi.Fg.Code(207))
-	fmt.Println("-*. Goodbye .*-" + ansi.Fmt.Reset)
 }
