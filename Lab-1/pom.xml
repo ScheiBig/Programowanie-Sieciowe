@@ -71,11 +71,11 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-<!--                    <archive>-->
-<!--                        <manifest>-->
-<!--                            <mainClass>com.marcinjeznach.MainKt</mainClass>-->
-<!--                        </manifest>-->
-<!--                    </archive>-->
+                    <archive>
+                        <manifest>
+                            <mainClass>com.marcinjeznach.MainKt</mainClass>
+                        </manifest>
+                    </archive>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>

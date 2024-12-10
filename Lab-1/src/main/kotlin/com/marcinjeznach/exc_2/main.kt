@@ -27,12 +27,15 @@ const val arrR = 'C'.code
 const val arrL = 'D'.code
 
 fun main() = runBlocking {
+	// Create thread pool - same number of threads as coroutines,
+	// to ensure that application will run just as if it were using
+	// raw threads
 	val thrPool = newFixedThreadPoolContext(10, "Exercise 2")
 
 	lateinit var terminal: Terminal
 	lateinit var jobs: Jobs
 	try {
-		jobs = Jobs(Array(10) { i ->
+		jobs = Jobs((0..<10).map { i ->
 			val ch = Channel<RequestState>(Channel.CONFLATED)
 			JobState(launch(thrPool) {
 				var j = 1
@@ -52,7 +55,7 @@ fun main() = runBlocking {
 
 		terminal = initConsole(help, jobs::toString)
 		while (true) {
-			when (val key = terminal.getch()) {
+			when (terminal.getch()) {
 				'q'.code -> break
 				' '.code -> if (jobs.selected.status == Status.Running) {
 					jobs.selected.status = Status.Stopped
@@ -61,6 +64,10 @@ fun main() = runBlocking {
 					jobs.selected.status = Status.Running
 					jobs.selected.request.send(RequestState.Resume)
 				}
+				// Arrow keys are send as "\u001b[A" .. "\u00b1[D".
+				// Escape character indicates that next two characters
+				// should be read - "[", and a control sequence (we expect
+				// same characters that are present in ansi.cur.{up|down|right|left}
 				'\u001b'.code -> {
 					if (terminal.getch() != '['.code) {
 						continue
@@ -84,22 +91,34 @@ fun main() = runBlocking {
 					}
 				}
 			}
+			// Print "nothing" to update footer
 			terminal.termPrint("", jobs::toString)
 		}
 
 	} finally {
+		// Cleanup - with small delay for nice effect of shutting down
+		// of coroutines
 		for (j in jobs) {
 			j.job.cancelAndJoin()
 			j.status = Status.Offline
 			delay(50.milliseconds)
 			terminal.termPrint("", jobs::toString)
 		}
+		// Remove footer from stdout history
 		terminal.print(clr.scr.toEnd)
 		terminal.println(fg.code(207)["-*. Goodbye .*-"])
 		terminal.close()
 	}
 }
 
+/**
+ * Hold state of single Job "Thread".
+ *
+ * @property job Reference to [Job] of coroutine.
+ * @property request Buffered single-item channel, that keeps only most recent
+ *           value that was sent. Used to request pausing / resuming of coroutine.
+ * @property status
+ */
 class JobState(
 	val job: Job,
 	val request: Channel<RequestState>,
@@ -107,7 +126,7 @@ class JobState(
 )
 
 class Jobs(
-	private val tasks: Array<JobState>,
+	private val tasks: List<JobState>,
 	var selection: Int = 0,
 ) : Iterable<JobState> {
 	operator fun get(idx: Int): JobState = tasks[idx]
