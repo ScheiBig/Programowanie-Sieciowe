@@ -7,6 +7,7 @@ fun main(args: Array<String>) {
 		"1" -> com.marcinjeznach.exc_1.main()
 		"2" -> com.marcinjeznach.exc_2.main()
 		"3" -> com.marcinjeznach.exc_3.main()
-		else -> error(fg.red["Proszę podać numer zadania (1..4)!"])
+		"4" -> com.marcinjeznach.exc_4.main()
+		else -> error(fg.red["Proszę podać numer zadania (1..4) jako argument programu!"])
 	}
 }
