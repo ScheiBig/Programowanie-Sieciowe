@@ -3,7 +3,7 @@ package com.marcinjeznach.exc_2
 import com.marcinjeznach.ansi.clr
 import com.marcinjeznach.ansi.fg
 import com.marcinjeznach.ansi.fmt
-import com.marcinjeznach.com.marcinjeznach.tui.*
+import com.marcinjeznach.tui.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import org.jline.terminal.Terminal
@@ -27,25 +27,34 @@ const val arrR = 'C'.code
 const val arrL = 'D'.code
 
 fun main() = runBlocking {
-	// Create thread pool - same number of threads as coroutines,
-	// to ensure that application will run just as if it were using
-	// raw threads
-	val thrPool = newFixedThreadPoolContext(10, "Exercise 2")
-
 	lateinit var terminal: Terminal
 	lateinit var jobs: Jobs
 	try {
 		jobs = Jobs((0..<10).map { i ->
+			// Conflated channel will throw away old signal, if new one
+			// is pushed in.
 			val ch = Channel<RequestState>(Channel.CONFLATED)
-			JobState(launch(thrPool) {
-				var j = 1
+			JobState(launch(Dispatchers.IO) {
+				var j = 0
+				// Loop infinitely while coroutine is running. In most scenarios,
+				// cancellation is cooperative, done by polling this variable.
 				while (isActive) {
+					// Wait for new state request - if request is `Resume`
+					// then it enters  inner loop that produces values.
+					// If `Pause` signal is received, then inner loop breaks
+					// and again suspends on channel.
+					// Initially, there will be no signal, so coroutine will wait for start.
 					var requestedState = ch.receive()
 					while (requestedState == RequestState.Resume) {
-						terminal.termPrintln("${(j + A).toChar()}$i", jobs::toString)
+						terminal.termPrintln(
+							"${(j + A).toChar()}$i",
+							jobs::toString,
+						)
 						j = (j + 1) % (Z - A + 1)
 
 						delay(1.seconds)
+						// If no new signal is available, then assume that
+						// loop should continue.
 						requestedState = ch.tryReceive()
 							.getOrNull() ?: RequestState.Resume
 					}
@@ -58,11 +67,9 @@ fun main() = runBlocking {
 			when (terminal.getch()) {
 				'q'.code -> break
 				' '.code -> if (jobs.selected.status == Status.Running) {
-					jobs.selected.status = Status.Stopped
-					jobs.selected.request.send(RequestState.Pause)
+					jobs.selected.pause()
 				} else {
-					jobs.selected.status = Status.Running
-					jobs.selected.request.send(RequestState.Resume)
+					jobs.selected.resume()
 				}
 				// Arrow keys are send as "\u001b[A" .. "\u00b1[D".
 				// Escape character indicates that next two characters
@@ -79,14 +86,16 @@ fun main() = runBlocking {
 						arrL -> {
 							val prevSel = jobs.selection
 							jobs.selection = (jobs.selection + 9) % 10
-							if ((jobs.selection < 5) != (prevSel < 5)) jobs.selection =
-								(jobs.selection + 5) % 10
+							if ((jobs.selection < 5) != (prevSel < 5)) {
+								jobs.selection = (jobs.selection + 5) % 10
+							}
 						}
 						arrR -> {
 							val prevSel = jobs.selection
 							jobs.selection = (jobs.selection + 11) % 10
-							if ((jobs.selection < 5) != (prevSel < 5)) jobs.selection =
-								(jobs.selection + 5) % 10
+							if ((jobs.selection < 5) != (prevSel < 5)) {
+								jobs.selection = (jobs.selection + 5) % 10
+							}
 						}
 					}
 				}
@@ -96,17 +105,17 @@ fun main() = runBlocking {
 		}
 
 	} finally {
-		// Cleanup - with small delay for nice effect of shutting down
-		// of coroutines
+		// Cleanup - with small delay for nice "waterfall" effect of shutting down
+		// of coroutines.
 		for (j in jobs) {
-			j.job.cancelAndJoin()
-			j.status = Status.Offline
+			j.cancelAndJoin()
 			delay(50.milliseconds)
 			terminal.termPrint("", jobs::toString)
 		}
 		// Remove footer from stdout history
 		terminal.print(clr.scr.toEnd)
-		terminal.println(fg.code(207)["-*. Goodbye .*-"])
+			.println(fg.code(207)["-*. Goodbye .*-"])
+			.flush()
 		terminal.close()
 	}
 }
@@ -120,22 +129,51 @@ fun main() = runBlocking {
  * @property status
  */
 class JobState(
-	val job: Job,
-	val request: Channel<RequestState>,
-	var status: Status,
-)
+	private val job: Job,
+	private val request: Channel<RequestState>,
+	status: Status,
+) {
+	private var _status = status
+	val status get() = _status
 
+	suspend fun pause() {
+		_status = Status.Stopped
+		request.send(RequestState.Pause)
+	}
+
+	suspend fun resume() {
+		_status = Status.Running
+		request.send(RequestState.Resume)
+	}
+
+	suspend fun cancelAndJoin() {
+		job.cancelAndJoin()
+		_status = Status.Offline
+	}
+}
+
+/**
+ * Container for all jobs – exposes iterator for initialization / finalization,
+ * as well as selection of job in footer.
+ *
+ * @property jobs List of wrapped jobs.
+ * @property selection Index of selected job.
+ * @property selected Exposes selected element.
+ */
 class Jobs(
-	private val tasks: List<JobState>,
+	private val jobs: List<JobState>,
 	var selection: Int = 0,
 ) : Iterable<JobState> {
-	operator fun get(idx: Int): JobState = tasks[idx]
+	operator fun get(idx: Int): JobState = jobs[idx]
 
+	/**
+	 * Prints jobs as footer status bar.
+	 */
 	override fun toString() = buildString {
 		append(clr.ln.all)
 		appendLine(fg.code(66)["-".repeat(12 * 5 - 2)])
 
-		for ((i, t) in tasks.withIndex()) {
+		for ((i, t) in jobs.withIndex()) {
 			if (i % 5 == 0 && i != 0) {
 				appendLine()
 				append(clr.ln.all)
@@ -151,16 +189,31 @@ class Jobs(
 		append(fmt.reset)
 	}
 
-	override fun iterator() = tasks.iterator()
+	override fun iterator() = jobs.iterator()
 
 	val selected
-		get() = tasks[selection]
+		get() = jobs[selection]
 }
 
+/**
+ * Current status of [JobState] – it is only an information, that should
+ * be manually synchronized with actual lifetime of [Job].
+ */
 enum class Status {
-	Running, Stopped, Offline,
+	/** Currently running and producing values. */
+	Running,
+	/** Currently stopped and ready for resuming. */
+	Stopped,
+	/** Cancelled and not resumable. */
+	Offline,
 }
 
+/**
+ * Signal for requesting new coroutine status.
+ */
 enum class RequestState {
-	Resume, Pause,
+	/** Request resuming of paused job.  */
+	Resume,
+	/** Request pausing of running job. */
+	Pause,
 }

@@ -124,9 +124,10 @@ object cur {
 	}
 
 	/**
-	 * Scrolls screen in specified direction, moving cursor in reverse direction.
+	 * Scrolls screen buffer in specified direction, moving cursor in reverse direction.
 	 *
-	 * After change, cursor stays
+	 * After change, cursor stays in same place - only printed content shifts,
+	 * replacing old one, instead of moving it like [println()][println] does.
  	 */
 
 	object scr {
@@ -134,16 +135,29 @@ object cur {
 		fun down(n: Int) = "\u001b[${n}T"
 	}
 
+	/**
+	 * Moves cursor to specified absolute position.
+	 */
 	object goTo {
 		fun yx(y: Int, x: Int) = "\u001b[${y};${x}H"
 		fun x(x: Int) = "\u001b[${x}G"
 	}
 
+	/**
+	 * Saves / restores cursor position.
+	 *
+	 * For terminals with x-term emulation, use [xmemo].
+	 */
 	object memo {
 		const val save = "\u001b[s"
 		const val restore = "\u001b[u"
 	}
 
+	/**
+	 * Saves / restores cursor position.
+	 *
+	 * For terminals with non-x-term emulation, use [memo].
+	 */
 	object xmemo {
 		const val save = "\u001b7"
 		const val restore = "\u001b8"
