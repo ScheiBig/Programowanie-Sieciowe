@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.marcinjeznach</groupId>
-    <artifactId>Lab-1</artifactId>
+    <artifactId>Lab-2</artifactId>
     <version>1.0</version>
-    <name>Lab-1</name>
+    <name>Lab-2</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -73,7 +73,6 @@
             <artifactId>ikonli-fontawesome5-pack</artifactId>
             <version>${ikonli.version}</version>
         </dependency>
-
     </dependencies>
 
     <build>
