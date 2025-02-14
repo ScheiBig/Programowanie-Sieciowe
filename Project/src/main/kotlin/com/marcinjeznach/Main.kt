@@ -1,19 +1,22 @@
 package com.marcinjeznach
 
+import com.marcinjeznach.utils.printErr
+import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
+import com.marcinjeznach.project.server.main as main_server
+import com.marcinjeznach.project.client.main as main_client
 
 /**
  * Main entry point for JAR generated with `mvn package`.
  */
-fun main(args: Array<String>) {
-	when (args.getOrNull(0)?.toIntOrNull()) {
-		1 -> com.marcinjeznach.lab1.exc_1.main()
-		2 -> com.marcinjeznach.lab1.exc_2.main()
-		3 -> com.marcinjeznach.lab1.exc_3.main()
-		4 -> com.marcinjeznach.lab1.exc_4.main()
+fun main(args: Array<String>): Unit = runBlocking {
+	when (args.getOrNull(0)) {
+
+		"server" -> main_server(args)
+		"client" -> main_client(args)
 
 		else -> {
-			System.err.println("Please specify exercise number in program args (1..4)!")
+			printErr("Please specify program type in program args (server / client)!")
 			exitProcess(1)
 		}
 	}

@@ -5,18 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.marcinjeznach</groupId>
-    <artifactId>Lab-1</artifactId>
+    <artifactId>Project</artifactId>
     <version>1.0</version>
-    <name>Lab-1</name>
+    <name>Project</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>21</java.version>
-        <javafx.vesion>21.0.4</javafx.vesion>
+        <javafx.vesion>21.0.1</javafx.vesion>
         <junit.version>5.10.2</junit.version>
         <kotlin.version>1.9.23</kotlin.version>
         <coroutines.version>1.9.0</coroutines.version>
         <ikonli.version>12.3.1</ikonli.version>
+        <kotlinx-serialization.version>1.6.1</kotlinx-serialization.version>
     </properties>
 
     <dependencies>
@@ -73,12 +74,16 @@
             <artifactId>ikonli-fontawesome5-pack</artifactId>
             <version>${ikonli.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.jetbrains.kotlinx</groupId>
+            <artifactId>kotlinx-serialization-json</artifactId>
+            <version>${kotlinx-serialization.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
-        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+<!--        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>-->
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -111,10 +116,20 @@
                 </executions>
                 <configuration>
                     <jvmTarget>${java.version}</jvmTarget>
+                    <compilerPlugins>
+                        <plugin>kotlinx-serialization</plugin>
+                    </compilerPlugins>
                     <args>
                         <arg>-Xcontext-receivers</arg>
                     </args>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.jetbrains.kotlin</groupId>
+                        <artifactId>kotlin-maven-serialization</artifactId>
+                        <version>${kotlin.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
